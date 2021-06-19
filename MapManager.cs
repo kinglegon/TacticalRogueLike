@@ -8,7 +8,11 @@ public class MapManager : MonoBehaviour
     int roomSizeY = 10;
 
     int roomCount;
-    int roomCountCutoff = 3;
+    int maxRoomCount = 5;
+
+    bool[,] roomLayout;
+    int roomLayoutSizeX = 5;
+    int roomLayoutSizeY = 5;
 
     [SerializeField] GameObject[] roomPrefabs;
     List<GameObject> spawnedRooms;
@@ -30,11 +34,9 @@ public class MapManager : MonoBehaviour
             SpawnInDoorways(1, 1, room);
 
         }
-        
-        
-        //after they made the amount of doors before cuttoff close off all the rooms with open ends
-        //SpawnInDoorways(1, 1);
 
+        roomLayout = GenerateRoomLayout(roomLayoutSizeX, roomLayoutSizeY, maxRoomCount);
+        
     }
 
     // Update is called once per frame
@@ -46,7 +48,7 @@ public class MapManager : MonoBehaviour
     GameObject SpawnRoom(int locationX, int locationY, string doorway, int minDoors, int maxDoors)
     {
         //makes a list of possible rooms based on which way the doorway connects
-        List<GameObject> possibleRooms = getCompatableRooms(doorway, minDoors, maxDoors);
+        List<GameObject> possibleRooms = GetCompatableRooms(doorway, minDoors, maxDoors);
         //choses a room out of the possible rooms
         GameObject chosenRoom = possibleRooms[Random.Range(0, possibleRooms.Count - 1)];
         //adds room to the scene at desired location
@@ -59,7 +61,7 @@ public class MapManager : MonoBehaviour
         return spawnedRoom;
     }
 
-    List<GameObject> getCompatableRooms(string doorway,int minDoors, int maxDoors)
+    List<GameObject> GetCompatableRooms(string doorway,int minDoors, int maxDoors)
     {
         //intilizes list for possible rooms
         List<GameObject> possibleRooms = new List<GameObject>();
@@ -148,5 +150,101 @@ public class MapManager : MonoBehaviour
         }
 
         return spawnedRooms;
+    }
+
+    bool[,] GenerateRoomLayout(int layoutSizeX, int layoutSizeY, int maxRoomCount)
+    {
+        //creats room counter
+        int roomCounter = 0;
+
+        //creates que for rooms to branch from
+        Queue<int[]> branchQue = new Queue<int[]>();
+
+        //sets up room layout array
+        bool[,] roomLayout = new bool[layoutSizeX, layoutSizeY];
+
+        //create starting room and adds it to the branch que
+        roomLayout[layoutSizeX / 2, layoutSizeY / 2] = true;
+        branchQue.Enqueue(new int[] { layoutSizeX / 2, layoutSizeY / 2 });
+        roomCounter++;
+
+        while (roomCounter < maxRoomCount)
+        {
+            int[] roomNumber = branchQue.Dequeue();
+            int[] branchedRoom = BranchRoom(ref roomLayout, roomNumber);
+            branchQue.Enqueue(branchedRoom);
+            roomCounter++;
+        }
+
+        return roomLayout;
+    }
+
+    int[] BranchRoom (ref bool[,] roomLayout, int[] roomNumber)
+    {
+        List<int> startingDirections = new List<int>(new int[] { 1, 2, 3, 4 });
+        List<int> directions = new List<int>();
+
+        //sorts all directions so it will check them all in a random order
+        while(startingDirections.Count > 0)
+        {
+            int randomindex = Random.Range(0, startingDirections.Count);
+            directions.Add(startingDirections[randomindex]);
+            startingDirections.RemoveAt(randomindex);
+        }
+        
+
+        foreach(int direction in directions)
+        {
+            int[] newRoom;
+            switch (direction)
+            {
+                //direction is up
+                case 1:
+                    {
+                        newRoom = new int[]{ roomNumber[0], roomNumber[1] + 1 };
+                        break;
+                        
+                    }
+                //direction is down
+                case 2:
+                    {
+                        newRoom = new int[]{ roomNumber[0], roomNumber[1] - 1 };
+                        break;
+                    }
+                //direction is left
+                case 3:
+                    {
+                        newRoom = new int[]{ roomNumber[0] - 1, roomNumber[1] };
+                        break;
+                    }
+                //direction is right
+                case 4:
+                    {
+                        newRoom = new int[] { roomNumber[0] + 1, roomNumber[1] };
+                        break;
+                    }
+                //no direction
+                default:
+                    {
+                        newRoom = new int[]{ roomNumber[0], roomNumber[1]};
+                        break;
+                    }
+
+            
+            }
+            //checks if there is already a room set to be there and if not sets one there and returns the room number
+            if (!roomLayout[newRoom[0], newRoom[1]])
+            {
+                roomLayout[newRoom[0], newRoom[1]] = true;
+                return newRoom;
+            }
+        }
+        //this happens if all the rooms next the a room are already true and will cause an infinite loop
+        Debug.Log("Big Problem");
+        return roomNumber;
+        
+            
+            
+
     }
 }
